@@ -1,0 +1,22 @@
+{
+  "name": "session-replay",
+  "version": "1.0.0",
+  "description": "Interactive replay viewer for Claude Code sessions. Understand, debug, and fork any agent session.",
+  "type": "module",
+  "bin": {
+    "session-replay": "./src/cli.mjs"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "claude-code", "ai-agent", "session", "replay", "debugging", "developer-tools"
+  ],
+  "files": ["src/", "hooks/", ".claude/", "install.sh"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RajuRoopani/session-replay"
+  }
+}

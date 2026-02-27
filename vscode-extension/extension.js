@@ -246,6 +246,70 @@ function buildAdapterScript() {
       console.error('[session-replay] forkFrom error:', err);
     }
   };
+
+  // ── Replay from here — opens a new VS Code terminal and starts claude ──────
+  window.replayFromHere = function replayFromHere(stepNum) {
+    try {
+      const evts = DATA.events;
+      const m    = DATA.meta;
+
+      const prior = evts.filter(e => e.step <= stepNum);
+
+      const files = [...new Set(
+        prior
+          .filter(e => e.tool && (e.tool.name === 'Edit' || e.tool.name === 'Write'))
+          .map(e => e.tool.input.file_path)
+      )];
+
+      const cmds = prior
+        .filter(e => e.tool && e.tool.name === 'Bash')
+        .slice(-5)
+        .map(e => '  $ ' + (e.tool.input.command || ''));
+
+      const userEvents = prior.filter(e => e.type === 'user');
+      const lastUser   = userEvents.length
+        ? (userEvents[userEvents.length - 1].text || '')
+        : '';
+
+      const atStep = prior[prior.length - 1];
+      const atDesc = atStep && atStep.tool
+        ? atStep.tool.name + ': ' + (atStep.tool.input.file_path || atStep.tool.input.command || '')
+        : (atStep && atStep.text) || '';
+
+      const md = [
+        '# Session Fork \u2014 ' + (m.project || 'unknown') + ' from step ' + stepNum,
+        '',
+        '## What happened before this point (steps 1\u2013' + stepNum + ')',
+        '',
+        '**Files changed:**',
+        files.length ? files.map(f => '- ' + f).join('\n') : '- (none)',
+        '',
+        '**Last commands run:**',
+        cmds.length ? cmds.join('\n') : '  (none)',
+        '',
+        '**Last user message:**',
+        '> ' + lastUser,
+        '',
+        '## At step ' + stepNum,
+        'The agent was executing: ' + atDesc,
+        '',
+        '## Continue from here',
+        'Pick up this session from step ' + stepNum + '. The files listed above have been modified.',
+        'Branch: '  + (m.branch    || 'unknown'),
+        'Session: ' + (m.sessionId || 'unknown'),
+      ].join('\n');
+
+      vscode.postMessage({
+        command:  'replayTerminal',
+        step:     stepNum,
+        content:  md,
+        cwd:      m.cwd     || '',
+        project:  m.project || 'unknown',
+      });
+    } catch (err) {
+      console.error('[session-replay] replayFromHere error:', err);
+    }
+  };
 })();
 </script>`;
 }
@@ -253,6 +317,10 @@ function buildAdapterScript() {
 // ── Handle messages from webview ───────────────────────────────────────────────
 
 async function handleWebviewMessage(msg) {
+  if (msg.command === 'replayTerminal') {
+    await handleReplayTerminal(msg);
+    return;
+  }
   if (msg.command !== 'fork') return;
 
   const destPath = path.join(DOWNLOADS_DIR, msg.filename);
@@ -279,6 +347,32 @@ async function handleWebviewMessage(msg) {
       vscode.commands.executeCommand('revealFileInOS', uri);
     }
   });
+}
+
+// ── Replay terminal ────────────────────────────────────────────────────────────
+
+async function handleReplayTerminal(msg) {
+  // Write fork prompt to a temp file so we can pass it cleanly to claude.
+  const tmpFile = path.join(os.tmpdir(), `session-replay-fork-step-${msg.step}.md`);
+  try {
+    fs.writeFileSync(tmpFile, msg.content, 'utf8');
+  } catch (err) {
+    vscode.window.showErrorMessage(`Session Replay: could not write fork prompt — ${err.message}`);
+    return;
+  }
+
+  const cwd = (msg.cwd && fs.existsSync(msg.cwd)) ? msg.cwd : os.homedir();
+
+  const terminal = vscode.window.createTerminal({
+    name: `↺ ${msg.project} · step ${msg.step}`,
+    cwd,
+  });
+
+  terminal.show();
+
+  // cd into the project dir, then launch claude with the fork prompt as the
+  // initial message. Using `cat file` via $() passes multi-line content safely.
+  terminal.sendText(`claude "$(cat '${tmpFile}')"`);
 }
 
 // ── Directory watcher — notify on new sessions ─────────────────────────────────

@@ -329,10 +329,12 @@ pre.cblock.added{
   white-space:pre-wrap;word-break:break-word;
 }
 
+/* Button row */
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 14px 13px}
+
 /* Fork button */
 .fork-btn{
   display:inline-flex;align-items:center;gap:6px;
-  margin:10px 14px 13px;
   background:rgba(255,255,255,.04);border:1px solid var(--border);
   color:var(--muted);border-radius:6px;padding:5px 12px;
   font-size:12px;cursor:pointer;transition:all .15s;
@@ -341,6 +343,19 @@ pre.cblock.added{
 .fork-btn:hover{
   background:rgba(88,166,255,.1);
   border-color:rgba(88,166,255,.5);color:var(--edit);
+}
+
+/* Replay from here button */
+.replay-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(63,185,80,.06);border:1px solid rgba(63,185,80,.25);
+  color:rgba(63,185,80,.8);border-radius:6px;padding:5px 12px;
+  font-size:12px;cursor:pointer;transition:all .15s;
+  font-family:inherit;
+}
+.replay-btn:hover{
+  background:rgba(63,185,80,.15);
+  border-color:rgba(63,185,80,.6);color:#56d364;
 }
 
 /* ─── BRANCH SEPARATOR ────────────────────────────────────────────── */
@@ -677,7 +692,10 @@ function renderBody(ev,el){
     }
   }
 
+  h+='<div class="btn-row">';
   h+='<button class="fork-btn" onclick="forkFrom('+ev.step+')">⑂ Fork from step '+ev.step+'</button>';
+  h+='<button class="replay-btn" onclick="replayFromHere('+ev.step+')">▶ Replay from here</button>';
+  h+='</div>';
   el.innerHTML=h;
 }
 
@@ -717,6 +735,13 @@ Session: \${meta.sessionId||'unknown'}
   document.body.appendChild(a);
   a.click();
   setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(a.href)},100);
+}
+
+// ── Replay from here ──────────────────────────────────────────────────────────
+function replayFromHere(stepNum){
+  // In VS Code the adapter overrides this with a terminal-opening version.
+  // In browser, fall back to fork (download the .md).
+  forkFrom(stepNum);
 }
 
 // ── Controls ──────────────────────────────────────────────────────────────────

@@ -739,8 +739,12 @@ Session: \${meta.sessionId||'unknown'}
 
 // ── Replay from here ──────────────────────────────────────────────────────────
 function replayFromHere(stepNum){
-  // In VS Code the adapter overrides this with a terminal-opening version.
-  // In browser, fall back to fork (download the .md).
+  // VS Code adapter sets window.__vscodeReplay — use it when available.
+  if(typeof window.__vscodeReplay==='function'){
+    window.__vscodeReplay(stepNum);
+    return;
+  }
+  // Browser fallback: same as fork.
   forkFrom(stepNum);
 }
 

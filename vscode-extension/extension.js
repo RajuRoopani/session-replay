@@ -248,7 +248,10 @@ function buildAdapterScript() {
   };
 
   // ── Replay from here — opens a new VS Code terminal and starts claude ──────
-  window.replayFromHere = function replayFromHere(stepNum) {
+  // Use a sentinel (__vscodeReplay) rather than overriding replayFromHere
+  // directly, because function-declaration overrides via window.x are not
+  // reliable across webview script blocks in all VS Code versions.
+  window.__vscodeReplay = function(stepNum) {
     try {
       const evts = DATA.events;
       const m    = DATA.meta;
@@ -352,16 +355,16 @@ async function handleWebviewMessage(msg) {
 // ── Replay terminal ────────────────────────────────────────────────────────────
 
 async function handleReplayTerminal(msg) {
-  // Write fork prompt to a temp file so we can pass it cleanly to claude.
-  const tmpFile = path.join(os.tmpdir(), `session-replay-fork-step-${msg.step}.md`);
+  const cwd = (msg.cwd && fs.existsSync(msg.cwd)) ? msg.cwd : os.homedir();
+
+  // Write the fork prompt into the project dir so claude can pick it up.
+  const forkFile = path.join(cwd, `.session-replay-fork.md`);
   try {
-    fs.writeFileSync(tmpFile, msg.content, 'utf8');
+    fs.writeFileSync(forkFile, msg.content, 'utf8');
   } catch (err) {
     vscode.window.showErrorMessage(`Session Replay: could not write fork prompt — ${err.message}`);
     return;
   }
-
-  const cwd = (msg.cwd && fs.existsSync(msg.cwd)) ? msg.cwd : os.homedir();
 
   const terminal = vscode.window.createTerminal({
     name: `↺ ${msg.project} · step ${msg.step}`,
@@ -370,9 +373,9 @@ async function handleReplayTerminal(msg) {
 
   terminal.show();
 
-  // cd into the project dir, then launch claude with the fork prompt as the
-  // initial message. Using `cat file` via $() passes multi-line content safely.
-  terminal.sendText(`claude "$(cat '${tmpFile}')"`);
+  // Print the fork context so the user can see it, then launch claude.
+  // The user's first message can reference or paste from it.
+  terminal.sendText(`cat .session-replay-fork.md && echo "" && claude`);
 }
 
 // ── Directory watcher — notify on new sessions ─────────────────────────────────

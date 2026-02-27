@@ -1,0 +1,36 @@
+{
+  "name": "session-replay-vscode",
+  "displayName": "Session Replay",
+  "description": "Claude Code session timeline — interactive replay viewer inside VS Code",
+  "version": "0.1.0",
+  "publisher": "session-replay",
+  "engines": { "vscode": "^1.94.0" },
+  "categories": ["Other"],
+  "keywords": ["claude-code", "session", "replay", "ai-agent"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "sessionReplay.openLatest",
+        "title": "Session Replay: Open Latest"
+      },
+      {
+        "command": "sessionReplay.pick",
+        "title": "Session Replay: Pick Session…"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "sessionReplay.openLatest",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r"
+      }
+    ]
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RajuRoopani/session-replay"
+  }
+}
